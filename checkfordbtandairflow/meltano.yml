@@ -29,6 +29,10 @@ plugins:
       port: 14913
       user: admin
       dbname: gdb
+  orchestrators:
+  - name: airflow
+    variant: apache
+    pip_url: apache-airflow==2.1.2 --constraint https://raw.githubusercontent.com/apache/airflow/constraints-2.1.2/constraints-${MELTANO__PYTHON_VERSION}.txt
   transformers:
   - name: dbt-postgres
     variant: dbt-labs
@@ -39,3 +43,15 @@ plugins:
       port: 14913
       dbname: gdb
       schema: tap_csv
+  files:
+  - name: files-airflow
+    variant: meltano
+    pip_url: git+https://github.com/meltano/files-airflow.git
+jobs:
+- name: tap-csv-to-target-postgres-with-dbt
+  tasks:
+  - tap-csv target-postgres dbt-postgres:run
+schedules:
+- name: daily-csv-load
+  interval: '@daily'
+  job: tap-csv-to-target-postgres-with-dbt
