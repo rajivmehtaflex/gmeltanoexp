@@ -11,7 +11,7 @@ plugins:
     config:
       files:
       - entity: gajinfo
-        file: /content/gmeltanoexp/checkfordbtandairflow/extract/values.csv
+        file: extract/values.csv
         keys:
         - id
   - name: tap-shopify
@@ -27,18 +27,17 @@ plugins:
     # - metafields.*
     # - locations.*
     # - custom_collections.*
-    # - collects.*
+    - collects.*
     # - customers.*
     # - products.*
     # - inventory_items.*
-    - orders.*
-
+    # - orders.*
   loaders:
   - name: target-jsonl
     variant: andyh1203
     pip_url: target-jsonl
     config:
-      destination_path: /content/gmeltanoexp/checkfordbtandairflow/output
+      destination_path: output
       do_timestamp_file: true
   - name: target-postgres
     variant: transferwise
@@ -57,10 +56,10 @@ plugins:
       dbname: MELTANO
       user: PRESCIENTRAJIV
       warehouse: PRESCIENT_WH
-      file_format: MELTANO.PRESCIENT__SHOPIFY__SHOPIFY__PRESCIENT.GFILE
+      file_format: MELTANO.PUBLIC.GFILE
       role: ppw_target_snowflake
       s3_bucket: meltanodatastorageprescientaiio
-      stage: MELTANO.PRESCIENT__SHOPIFY__SHOPIFY__PRESCIENT.DEVSTAGE
+      stage: MELTANO.PUBLIC.DEVSTAGE
 
   orchestrators:
   - name: airflow
@@ -76,6 +75,16 @@ plugins:
       port: 14913
       dbname: gdb
       schema: tap_csv
+  - name: dbt-snowflake
+    variant: dbt-labs
+    pip_url: dbt-core~=1.3.0 dbt-snowflake~=1.3.0
+    config:
+      account: mza63044.us-east-1
+      user: PRESCIENTRAJIV
+      role: ppw_target_snowflake
+      warehouse: PRESCIENT_WH
+      database: MELTANO
+      schema: tap_shopify
   files:
   - name: files-airflow
     variant: meltano
@@ -84,7 +93,13 @@ jobs:
 - name: tap-csv-to-target-postgres-with-dbt
   tasks:
   - tap-csv target-postgres dbt-postgres:run
+- name: tap-shopify-to-target-postgres-with-dbt
+  tasks:
+  - tap-shopify target-snowflake dbt-snowflake:run
 schedules:
 - name: daily-csv-load
   interval: '@daily'
   job: tap-csv-to-target-postgres-with-dbt
+- name: daily-shopify-load
+  interval: '@daily'
+  job: tap-shopify-to-target-postgres-with-dbt
